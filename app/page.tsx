@@ -58,7 +58,14 @@ export default function HomePage() {
             transition={{ duration: 0.8 }}
           >
             <div className="relative">
-              <Image src="/logo-aura.png" alt="Aura Barbería" width={50} height={50} className="brightness-110" />
+              <Image 
+                src="/logo-aura.png" 
+                alt="Aura Logo" 
+                width={50} 
+                height={50} 
+                priority 
+                className="brightness-110" 
+              />
               <div className="absolute inset-0 bg-red-500/20 rounded-full blur-lg"></div>
             </div>
             <div>
