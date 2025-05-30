@@ -5,7 +5,7 @@ if (!process.env.DB_HOST) {
   throw new Error("Define DB_HOST en .env.local");
 }
 
-export const pool = mysql.createPool({
+const pool = mysql.createPool({
   host:     process.env.DB_HOST,
   user:     process.env.DB_USER,
   password: process.env.DB_PASS,
@@ -15,6 +15,8 @@ export const pool = mysql.createPool({
   connectionLimit: 10,
   queueLimit: 0,
 });
+
+export default pool;
 
 export async function createConnection() {
   return await mysql.createConnection({

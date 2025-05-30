@@ -1,7 +1,7 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -36,6 +36,10 @@ import {
   CheckCircle,
   ImageIcon,
 } from "lucide-react"
+// import { toast } from "@/components/ui/toast"
+// If you have a Toast component, import it like this:
+import { Toast } from "@/components/ui/toast"
+// Or, if you use a notification hook or function from another library, import it accordingly.
 
 // Datos simulados expandidos
 const stats = [
@@ -273,6 +277,9 @@ interface ImagenGaleria {
 
 // Actualizar los estados con los tipos
 export default function AdminDashboard() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loginData, setLoginData] = useState({ email: '', password: '' });
+  
   const [activeTab, setActiveTab] = useState("overview")
   const [searchTerm, setSearchTerm] = useState("")
   const [filtroRol, setFiltroRol] = useState("todos")
@@ -310,53 +317,162 @@ export default function AdminDashboard() {
     categoria: "cortes",
   })
 
-  // Filtrar usuarios
-  const usuariosFiltrados = usuarios.filter((usuario) => {
-    const coincideBusqueda =
-      usuario.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      usuario.email.toLowerCase().includes(searchTerm.toLowerCase())
-    const coincideRol = filtroRol === "todos" || usuario.rol === filtroRol
-    return coincideBusqueda && coincideRol
-  })
+  // Modificar los estados para usuarios
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Funciones de gestión de usuarios
-  const handlePromoteUser = (userId: number) => {
-    setUsuarios(usuarios.map((usuario) => (usuario.id === userId ? { ...usuario, rol: "barbero" } : usuario)))
-    setModalAbierto("")
-    console.log(`Usuario ${userId} promovido a barbero`)
-  }
-
-  const handleDeleteUser = (userId: number) => {
-    setUsuarios(usuarios.filter((usuario) => usuario.id !== userId))
-    setModalAbierto("")
-    console.log(`Usuario ${userId} eliminado`)
-  }
-
-  interface UsuarioEditado extends Partial<Usuario> {
-    id: number
-  }
-
-  const handleEditUser = (usuarioEditado: UsuarioEditado) => {
-    setUsuarios(
-      usuarios.map((usuario) => (usuario.id === usuarioEditado.id ? { ...usuario, ...usuarioEditado } : usuario)),
-    )
-    setModalAbierto("")
-    console.log("Usuario editado:", usuarioEditado)
-  }
-
-  const handleAddUser = () => {
-    const nuevoId = Math.max(...usuarios.map((u) => u.id)) + 1
-    const usuario = {
-      ...nuevoUsuario,
-      id: nuevoId,
-      fechaRegistro: new Date().toISOString().split("T")[0],
-      ultimaActividad: new Date().toISOString().split("T")[0],
+  // Modificar la función fetchUsers para obtener datos reales de la BD
+  const fetchUsers = async () => {
+    try {
+      setLoading(true)
+      const res = await fetch('/api/admin/users')
+      if (!res.ok) throw new Error('Error al cargar usuarios')
+      const data = await res.json()
+      setUsuarios(data)
+    } catch (error) {
+      console.error(error)
+      // TODO: Implement toast notification here
+      // toast({
+      //   title: "Error",
+      //   description: "No se pudieron cargar los usuarios",
+      //   variant: "destructive"
+      // })
+    } finally {
+      setLoading(false)
     }
-    setUsuarios([...usuarios, usuario])
-    setNuevoUsuario({ nombre: "", email: "", telefono: "", rol: "cliente", estado: "activo" })
-    setModalAbierto("")
-    console.log("Nuevo usuario añadido:", usuario)
   }
+
+  // Función para promover/despromover usuarios
+  const handleChangeRole = async (userId: number, newRole: string) => {
+    try {
+      setLoading(true)
+      const res = await fetch('/api/admin/users/role', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: userId, role: newRole })
+      })
+
+      if (!res.ok) throw new Error('Error al cambiar rol')
+      
+      // TODO: Implement toast notification here
+      // toast({
+      //   title: "Éxito",
+      //   description: "Rol actualizado correctamente"
+      // })
+      // TODO: Implement toast notification here
+      // toast({
+      //   title: "Error", 
+      //   description: "No se pudo cambiar el rol",
+      //   variant: "destructive"
+      // })
+      await fetchUsers();
+    } finally {
+      setLoading(false)
+      setModalAbierto("")
+    }
+  }
+
+  // Función para promover usuario a barbero
+  const handlePromoteUser = async (userId: number) => {
+    await handleChangeRole(userId, "barbero");
+  }
+
+  // Función para cargar servicios
+  const fetchServices = async () => {
+    try {
+      const res = await fetch('/api/admin/services')
+      if (!res.ok) throw new Error('Error al cargar servicios')
+      // TODO: Implement toast notification here
+      // toast({
+      //   title: "Error",
+      //   description: "Error al cargar servicios",
+      //   variant: "destructive" 
+      // })
+    } catch (error) {
+      console.error(error)
+      // TODO: Implement toast notification here
+      // toast({
+      //   title: "Error",
+      //   description: "Error al cargar servicios",
+      //   variant: "destructive" 
+      // })
+    }
+  }
+
+  // Cargar datos iniciales
+  useEffect(() => {
+    fetchUsers()
+    fetchServices()
+  }, [])
+
+  // Función para editar usuario
+  const handleEditUser = async (usuarioEditado: Usuario) => {
+    try {
+      setLoading(true);
+      const res = await fetch('/api/users', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(usuarioEditado)
+      });
+
+      if (!res.ok) throw new Error('Error al actualizar usuario');
+      
+      // Recargar usuarios
+      const usersRes = await fetch('/api/users');
+      const updatedUsers = await usersRes.json();
+      setUsuarios(updatedUsers);
+      setModalAbierto("");
+    } catch (error) {
+      setError('Error al actualizar usuario');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Función para eliminar usuario
+  const handleDeleteUser = async (userId: number) => {
+    try {
+      setLoading(true);
+      const res = await fetch(`/api/users?id=${userId}`, {
+        method: 'DELETE'
+      });
+
+      if (!res.ok) throw new Error('Error al eliminar usuario');
+      
+      // Recargar usuarios
+      const usersRes = await fetch('/api/users');
+      const updatedUsers = await usersRes.json();
+      setUsuarios(updatedUsers);
+      setModalAbierto("");
+    } catch (error) {
+      setError('Error al eliminar usuario');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Función para añadir usuario
+  const handleAddUser = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(nuevoUsuario)
+      });
+
+      if (!response.ok) throw new Error('Error al crear usuario');
+      await fetchUsers(); // Recargar lista de usuarios
+      setNuevoUsuario({ nombre: "", email: "", telefono: "", rol: "cliente", estado: "activo" });
+      setModalAbierto("");
+      setError(null);
+    } catch (error) {
+      setError('Error al crear usuario');
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Funciones de gestión de servicios
   const handleAddService = () => {
@@ -456,8 +572,72 @@ export default function AdminDashboard() {
     )
   }
 
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(loginData)
+      });
+      
+      const data = await res.json();
+      if (data.success) {
+        setIsAuthenticated(true);
+      } else {
+        setError('Credenciales inválidas');
+      }
+    } catch (error) {
+      setError('Error de autenticación');
+    }
+  };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <Card className="w-full max-w-md bg-gradient-to-br from-gray-900/80 to-black/80 border-2 border-red-900/30">
+          <CardHeader>
+            <CardTitle className="text-2xl font-black text-white text-center">
+              BARBER<span className="text-red-500">CLOUD</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-white">Email</Label>
+                <Input
+                  type="email"
+                  value={loginData.email}
+                  onChange={(e) => setLoginData({...loginData, email: e.target.value})}
+                  className="bg-black/50 border-2 border-red-900/30 text-white"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-white">Contraseña</Label>
+                <Input
+                  type="password"
+                  value={loginData.password}
+                  onChange={(e) => setLoginData({...loginData, password: e.target.value})}
+                  className="bg-black/50 border-2 border-red-900/30 text-white"
+                  required
+                />
+              </div>
+              {error && (
+                <div className="text-red-500 text-sm">{error}</div>
+              )}
+              <Button type="submit" className="w-full bg-gradient-to-r from-red-600 to-red-700">
+                Iniciar Sesión
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-black text-white relative">
+    <div className="min-h-screen bg-black text-white">
       {/* Background Logo */}
       <div className="fixed inset-0 z-0 pointer-events-none">
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-[0.02]">
@@ -634,99 +814,109 @@ export default function AdminDashboard() {
               </div>
 
               {/* Users Table */}
-              <Card className="bg-gradient-to-br from-gray-900/80 to-black/80 border-2 border-red-900/30 shadow-xl">
-                <CardContent className="p-0">
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="border-b-2 border-red-900/30">
-                        <tr className="bg-gradient-to-r from-red-950/20 to-black">
-                          <th className="text-left p-4 text-gray-300 font-black">Usuario</th>
-                          <th className="text-left p-4 text-gray-300 font-black">Email</th>
-                          <th className="text-left p-4 text-gray-300 font-black">Rol</th>
-                          <th className="text-left p-4 text-gray-300 font-black">Estado</th>
-                          <th className="text-left p-4 text-gray-300 font-black">Registro</th>
-                          <th className="text-left p-4 text-gray-300 font-black">Acciones</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {usuariosFiltrados.map((usuario) => (
-                          <tr
-                            key={usuario.id}
-                            className="border-b border-red-900/20 hover:bg-red-950/10 transition-colors"
-                          >
-                            <td className="p-4">
-                              <div className="flex items-center space-x-3">
-                                <div className="w-10 h-10 bg-gradient-to-r from-red-600 to-red-700 rounded-full flex items-center justify-center shadow-lg">
-                                  <span className="text-white font-black text-sm">{usuario.nombre.charAt(0)}</span>
+              {loading ? (
+                <div className="flex justify-center items-center h-64">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div>
+                </div>
+              ) : error ? (
+                <div className="flex justify-center items-center h-64">
+                  <div className="text-red-500">{error}</div>
+                </div>
+              ) : (
+                <Card className="bg-gradient-to-br from-gray-900/80 to-black/80 border-2 border-red-900/30 shadow-xl">
+                  <CardContent className="p-0">
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="border-b-2 border-red-900/30">
+                          <tr className="bg-gradient-to-r from-red-950/20 to-black">
+                            <th className="text-left p-4 text-gray-300 font-black">Usuario</th>
+                            <th className="text-left p-4 text-gray-300 font-black">Email</th>
+                            <th className="text-left p-4 text-gray-300 font-black">Rol</th>
+                            <th className="text-left p-4 text-gray-300 font-black">Estado</th>
+                            <th className="text-left p-4 text-gray-300 font-black">Registro</th>
+                            <th className="text-left p-4 text-gray-300 font-black">Acciones</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {usuarios.map((usuario) => (
+                            <tr
+                              key={usuario.id}
+                              className="border-b border-red-900/20 hover:bg-red-950/10 transition-colors"
+                            >
+                              <td className="p-4">
+                                <div className="flex items-center space-x-3">
+                                  <div className="w-10 h-10 bg-gradient-to-r from-red-600 to-red-700 rounded-full flex items-center justify-center shadow-lg">
+                                    <span className="text-white font-black text-sm">{usuario.nombre.charAt(0)}</span>
+                                  </div>
+                                  <span className="text-white font-bold">{usuario.nombre}</span>
                                 </div>
-                                <span className="text-white font-bold">{usuario.nombre}</span>
-                              </div>
-                            </td>
-                            <td className="p-4 text-gray-300 font-medium">{usuario.email}</td>
-                            <td className="p-4">
-                              <Badge
-                                className={
-                                  usuario.rol === "barbero"
-                                    ? "bg-purple-600 text-white font-bold"
-                                    : usuario.rol === "admin"
-                                      ? "bg-red-600 text-white font-bold"
-                                      : "bg-blue-600 text-white font-bold"
-                                }
-                              >
-                                {usuario.rol.toUpperCase()}
-                              </Badge>
-                            </td>
-                            <td className="p-4">
-                              <Badge className={getEstadoColor(usuario.estado)}>{usuario.estado.toUpperCase()}</Badge>
-                            </td>
-                            <td className="p-4 text-gray-300 font-medium">{usuario.fechaRegistro}</td>
-                            <td className="p-4">
-                              <div className="flex space-x-2">
-                                {usuario.rol === "cliente" && (
+                              </td>
+                              <td className="p-4 text-gray-300 font-medium">{usuario.email}</td>
+                              <td className="p-4">
+                                <Badge
+                                  className={
+                                    usuario.rol === "barbero"
+                                      ? "bg-purple-600 text-white font-bold"
+                                      : usuario.rol === "admin"
+                                        ? "bg-red-600 text-white font-bold"
+                                        : "bg-blue-600 text-white font-bold"
+                                  }
+                                >
+                                  {usuario.rol.toUpperCase()}
+                                </Badge>
+                              </td>
+                              <td className="p-4">
+                                <Badge className={getEstadoColor(usuario.estado)}>{usuario.estado.toUpperCase()}</Badge>
+                              </td>
+                              <td className="p-4 text-gray-300 font-medium">{usuario.fechaRegistro}</td>
+                              <td className="p-4">
+                                <div className="flex space-x-2">
+                                  {usuario.rol === "cliente" && (
+                                    <Button
+                                      size="sm"
+                                      onClick={() => {
+                                        setUsuarioSeleccionado(usuario)
+                                        setModalAbierto("promoteUser")
+                                      }}
+                                      className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-bold"
+                                    >
+                                      <TrendingUp className="w-3 h-3 mr-1" />
+                                      Promover
+                                    </Button>
+                                  )}
                                   <Button
                                     size="sm"
                                     onClick={() => {
                                       setUsuarioSeleccionado(usuario)
-                                      setModalAbierto("promoteUser")
+                                      setModalAbierto("editUser")
                                     }}
-                                    className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-bold"
+                                    variant="outline"
+                                    className="border-yellow-500 text-yellow-500 hover:bg-yellow-500 hover:text-black font-bold"
                                   >
-                                    <TrendingUp className="w-3 h-3 mr-1" />
-                                    Promover
+                                    <Edit className="w-3 h-3 mr-1" />
+                                    Editar
                                   </Button>
-                                )}
-                                <Button
-                                  size="sm"
-                                  onClick={() => {
-                                    setUsuarioSeleccionado(usuario)
-                                    setModalAbierto("editUser")
-                                  }}
-                                  variant="outline"
-                                  className="border-yellow-500 text-yellow-500 hover:bg-yellow-500 hover:text-black font-bold"
-                                >
-                                  <Edit className="w-3 h-3 mr-1" />
-                                  Editar
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  onClick={() => {
-                                    setUsuarioSeleccionado(usuario)
-                                    setModalAbierto("deleteUser")
-                                  }}
-                                  className="bg-red-600 hover:bg-red-700 text-white font-bold"
-                                >
-                                  <Trash2 className="w-3 h-3 mr-1" />
-                                  Eliminar
-                                </Button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </CardContent>
-              </Card>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => {
+                                      setUsuarioSeleccionado(usuario)
+                                      setModalAbierto("deleteUser")
+                                    }}
+                                    className="bg-red-600 hover:bg-red-700 text-white font-bold"
+                                  >
+                                    <Trash2 className="w-3 h-3 mr-1" />
+                                    Eliminar
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </motion.div>
           )}
 
