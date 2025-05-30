@@ -221,24 +221,75 @@ const fichajesIniciales = [
   },
 ]
 
+// Interfaces
+interface Usuario {
+  id: number
+  nombre: string
+  email: string
+  telefono: string
+  rol: string
+  estado: string
+  fechaRegistro: string
+  ultimaActividad: string
+}
+
+interface Servicio {
+  id: number
+  nombre: string
+  precio: number
+  duracion: number
+  descripcion: string
+  activo: boolean
+}
+
+interface Cita {
+  id: number
+  cliente: string
+  barbero: string
+  servicio: string
+  fecha: string
+  hora: string
+  estado: string
+  precio: number
+}
+
+interface Fichaje {
+  id: number
+  barbero: string
+  fecha: string
+  entrada: string
+  salida: string
+  horas: string
+  estado: string
+}
+
+interface ImagenGaleria {
+  id: number
+  titulo: string
+  categoria: string
+  imagen: string
+  fecha: string
+}
+
+// Actualizar los estados con los tipos
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("overview")
   const [searchTerm, setSearchTerm] = useState("")
   const [filtroRol, setFiltroRol] = useState("todos")
-  const [usuarios, setUsuarios] = useState(usuariosIniciales)
-  const [galeria, setGaleria] = useState(galeriaIniciales)
-  const [servicios, setServicios] = useState(serviciosIniciales)
-  const [citas, setCitas] = useState(citasIniciales)
-  const [fichajes, setFichajes] = useState(fichajesIniciales)
+  const [usuarios, setUsuarios] = useState<Usuario[]>(usuariosIniciales)
+  const [galeria, setGaleria] = useState<ImagenGaleria[]>(galeriaIniciales)
+  const [servicios, setServicios] = useState<Servicio[]>(serviciosIniciales)
+  const [citas, setCitas] = useState<Cita[]>(citasIniciales)
+  const [fichajes, setFichajes] = useState<Fichaje[]>(fichajesIniciales)
 
   // Estados para modales
   const [modalAbierto, setModalAbierto] = useState("")
-  const [usuarioSeleccionado, setUsuarioSeleccionado] = useState(null)
-  const [servicioSeleccionado, setServicioSeleccionado] = useState(null)
-  const [imagenSeleccionada, setImagenSeleccionada] = useState(null)
+  const [usuarioSeleccionado, setUsuarioSeleccionado] = useState<Usuario | null>(null)
+  const [servicioSeleccionado, setServicioSeleccionado] = useState<Servicio | null>(null)
+  const [imagenSeleccionada, setImagenSeleccionada] = useState<ImagenGaleria | null>(null)
 
   // Estados para formularios
-  const [nuevoUsuario, setNuevoUsuario] = useState({
+  const [nuevoUsuario, setNuevoUsuario] = useState<Omit<Usuario, 'id' | 'fechaRegistro' | 'ultimaActividad'>>({
     nombre: "",
     email: "",
     telefono: "",
@@ -246,15 +297,15 @@ export default function AdminDashboard() {
     estado: "activo",
   })
 
-  const [nuevoServicio, setNuevoServicio] = useState({
+  const [nuevoServicio, setNuevoServicio] = useState<Omit<Servicio, 'id'>>({
     nombre: "",
-    precio: "",
-    duracion: "",
+    precio: 0,
+    duracion: 0,
     descripcion: "",
     activo: true,
   })
 
-  const [nuevaImagen, setNuevaImagen] = useState({
+  const [nuevaImagen, setNuevaImagen] = useState<Omit<ImagenGaleria, 'id' | 'imagen' | 'fecha'>>({
     titulo: "",
     categoria: "cortes",
   })
@@ -269,19 +320,23 @@ export default function AdminDashboard() {
   })
 
   // Funciones de gestión de usuarios
-  const handlePromoteUser = (userId) => {
+  const handlePromoteUser = (userId: number) => {
     setUsuarios(usuarios.map((usuario) => (usuario.id === userId ? { ...usuario, rol: "barbero" } : usuario)))
     setModalAbierto("")
     console.log(`Usuario ${userId} promovido a barbero`)
   }
 
-  const handleDeleteUser = (userId) => {
+  const handleDeleteUser = (userId: number) => {
     setUsuarios(usuarios.filter((usuario) => usuario.id !== userId))
     setModalAbierto("")
     console.log(`Usuario ${userId} eliminado`)
   }
 
-  const handleEditUser = (usuarioEditado) => {
+  interface UsuarioEditado extends Partial<Usuario> {
+    id: number
+  }
+
+  const handleEditUser = (usuarioEditado: UsuarioEditado) => {
     setUsuarios(
       usuarios.map((usuario) => (usuario.id === usuarioEditado.id ? { ...usuario, ...usuarioEditado } : usuario)),
     )
@@ -309,16 +364,16 @@ export default function AdminDashboard() {
     const servicio = {
       ...nuevoServicio,
       id: nuevoId,
-      precio: Number.parseInt(nuevoServicio.precio),
-      duracion: Number.parseInt(nuevoServicio.duracion),
+      precio: nuevoServicio.precio,
+      duracion: nuevoServicio.duracion,
     }
     setServicios([...servicios, servicio])
-    setNuevoServicio({ nombre: "", precio: "", duracion: "", descripcion: "", activo: true })
+    setNuevoServicio({ nombre: "", precio: 0, duracion: 0, descripcion: "", activo: true })
     setModalAbierto("")
     console.log("Nuevo servicio añadido:", servicio)
   }
 
-  const handleEditService = (servicioEditado) => {
+  const handleEditService = (servicioEditado: Servicio) => {
     setServicios(
       servicios.map((servicio) =>
         servicio.id === servicioEditado.id ? { ...servicio, ...servicioEditado } : servicio,
@@ -328,7 +383,7 @@ export default function AdminDashboard() {
     console.log("Servicio editado:", servicioEditado)
   }
 
-  const handleDeleteService = (servicioId) => {
+  const handleDeleteService = (servicioId: number) => {
     setServicios(servicios.filter((servicio) => servicio.id !== servicioId))
     setModalAbierto("")
     console.log(`Servicio ${servicioId} eliminado`)
@@ -349,13 +404,13 @@ export default function AdminDashboard() {
     console.log("Nueva imagen añadida:", imagen)
   }
 
-  const handleDeleteImage = (imagenId) => {
+  const handleDeleteImage = (imagenId: number) => {
     setGaleria(galeria.filter((imagen) => imagen.id !== imagenId))
     setModalAbierto("")
     console.log(`Imagen ${imagenId} eliminada`)
   }
 
-  const getEstadoColor = (estado) => {
+  const getEstadoColor = (estado: string) => {
     switch (estado) {
       case "activo":
       case "confirmada":
@@ -371,7 +426,14 @@ export default function AdminDashboard() {
     }
   }
 
-  const Modal = ({ isOpen, onClose, title, children }) => {
+  interface ModalProps {
+    isOpen: boolean
+    onClose: () => void
+    title: string
+    children: React.ReactNode
+  }
+
+  const Modal = ({ isOpen, onClose, title, children }: ModalProps) => {
     if (!isOpen) return null
 
     return (
@@ -961,7 +1023,11 @@ export default function AdminDashboard() {
           </div>
           <div className="flex space-x-3">
             <Button
-              onClick={() => handlePromoteUser(usuarioSeleccionado?.id)}
+              onClick={() => {
+                if (usuarioSeleccionado?.id !== undefined) {
+                  handlePromoteUser(usuarioSeleccionado.id)
+                }
+              }}
               className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 font-bold flex-1"
             >
               <CheckCircle className="w-4 h-4 mr-2" />
@@ -990,7 +1056,11 @@ export default function AdminDashboard() {
           </div>
           <div className="flex space-x-3">
             <Button
-              onClick={() => handleDeleteUser(usuarioSeleccionado?.id)}
+              onClick={() => {
+                if (usuarioSeleccionado?.id !== undefined) {
+                  handleDeleteUser(usuarioSeleccionado.id)
+                }
+              }}
               className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 font-bold flex-1"
             >
               <Trash2 className="w-4 h-4 mr-2" />
@@ -1155,7 +1225,7 @@ export default function AdminDashboard() {
               <Input
                 type="number"
                 value={nuevoServicio.precio}
-                onChange={(e) => setNuevoServicio({ ...nuevoServicio, precio: e.target.value })}
+                onChange={(e) => setNuevoServicio({ ...nuevoServicio, precio: Number(e.target.value) })}
                 className="bg-black/50 border-2 border-red-900/30 text-white focus:border-red-500"
                 placeholder="25"
               />
@@ -1165,7 +1235,7 @@ export default function AdminDashboard() {
               <Input
                 type="number"
                 value={nuevoServicio.duracion}
-                onChange={(e) => setNuevoServicio({ ...nuevoServicio, duracion: e.target.value })}
+                onChange={(e) => setNuevoServicio({ ...nuevoServicio, duracion: Number(e.target.value) })}
                 className="bg-black/50 border-2 border-red-900/30 text-white focus:border-red-500"
                 placeholder="30"
               />
@@ -1292,7 +1362,11 @@ export default function AdminDashboard() {
           </div>
           <div className="flex space-x-3">
             <Button
-              onClick={() => handleDeleteImage(imagenSeleccionada?.id)}
+              onClick={() => {
+                if (imagenSeleccionada?.id !== undefined) {
+                  handleDeleteImage(imagenSeleccionada.id)
+                }
+              }}
               className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 font-bold flex-1"
             >
               <Trash2 className="w-4 h-4 mr-2" />
