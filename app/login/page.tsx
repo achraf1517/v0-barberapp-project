@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Eye, EyeOff, ArrowLeft } from "lucide-react"
+import { Eye, EyeOff, ArrowLeft, Shield } from "lucide-react"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -19,23 +19,51 @@ export default function LoginPage() {
   const [formData, setFormData] = useState({
     email: "",
     password: "",
+    isAdmin: false,
   })
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
 
-    // Simulación de autenticación - en producción esto sería una llamada a la API
-    console.log("Login attempt:", formData)
+    try {
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...formData,
+          isAdmin: formData.isAdmin
+        }),
+      });
 
-    // Simulación de diferentes roles para demostración
-    if (formData.email === "admin@aura.com") {
-      router.push("/dashboard/admin")
-    } else if (formData.email === "barbero@aura.com") {
-      router.push("/dashboard/barbero")
-    } else {
-      router.push("/dashboard/cliente")
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Error al iniciar sesión');
+      }
+
+      // Redirigir según el rol y tipo de login
+      if (data.user.rol === 'admin' && formData.isAdmin) {
+        router.push('/dashboard/admin');
+      } else if (data.user.rol === 'cliente') {
+        router.push('/dashboard/cliente');
+      } else if (data.user.rol === 'barbero') {
+        router.push('/dashboard/barbero');
+      } else {
+        router.push('/dashboard/cliente');
+      }
+
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-black text-white flex">
@@ -95,6 +123,11 @@ export default function LoginPage() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
+                {error && (
+                  <div className="p-3 rounded bg-red-500/10 border border-red-500 text-red-500">
+                    {error}
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label htmlFor="email" className="text-white font-medium">
                     Email
@@ -147,8 +180,9 @@ export default function LoginPage() {
                 <Button
                   type="submit"
                   className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg"
+                  disabled={loading}
                 >
-                  Iniciar Sesión
+                  {loading ? "Iniciando sesión..." : "Iniciar Sesión"}
                 </Button>
 
                 <div className="relative">
@@ -159,6 +193,16 @@ export default function LoginPage() {
                     <span className="bg-black px-2 text-gray-400">o</span>
                   </div>
                 </div>
+
+                <Button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, isAdmin: true })}
+                  variant="outline"
+                  className="w-full mt-4 border-2 border-red-500 text-red-500 hover:bg-red-500 hover:text-white font-bold py-3 rounded-lg"
+                >
+                  <Shield className="w-4 h-4 mr-2" />
+                  Acceso Administrador
+                </Button>
 
                 <Link href="/invitado">
                   <Button

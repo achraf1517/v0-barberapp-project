@@ -277,9 +277,6 @@ interface ImagenGaleria {
 
 // Actualizar los estados con los tipos
 export default function AdminDashboard() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [loginData, setLoginData] = useState({ email: '', password: '' });
-  
   const [activeTab, setActiveTab] = useState("overview")
   const [searchTerm, setSearchTerm] = useState("")
   const [filtroRol, setFiltroRol] = useState("todos")
@@ -570,70 +567,6 @@ export default function AdminDashboard() {
         </div>
       </div>
     )
-  }
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const res = await fetch('/api/auth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(loginData)
-      });
-      
-      const data = await res.json();
-      if (data.success) {
-        setIsAuthenticated(true);
-      } else {
-        setError('Credenciales inválidas');
-      }
-    } catch (error) {
-      setError('Error de autenticación');
-    }
-  };
-
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <Card className="w-full max-w-md bg-gradient-to-br from-gray-900/80 to-black/80 border-2 border-red-900/30">
-          <CardHeader>
-            <CardTitle className="text-2xl font-black text-white text-center">
-              BARBER<span className="text-red-500">CLOUD</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div className="space-y-2">
-                <Label className="text-white">Email</Label>
-                <Input
-                  type="email"
-                  value={loginData.email}
-                  onChange={(e) => setLoginData({...loginData, email: e.target.value})}
-                  className="bg-black/50 border-2 border-red-900/30 text-white"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-white">Contraseña</Label>
-                <Input
-                  type="password"
-                  value={loginData.password}
-                  onChange={(e) => setLoginData({...loginData, password: e.target.value})}
-                  className="bg-black/50 border-2 border-red-900/30 text-white"
-                  required
-                />
-              </div>
-              {error && (
-                <div className="text-red-500 text-sm">{error}</div>
-              )}
-              <Button type="submit" className="w-full bg-gradient-to-r from-red-600 to-red-700">
-                Iniciar Sesión
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
-    );
   }
 
   return (
